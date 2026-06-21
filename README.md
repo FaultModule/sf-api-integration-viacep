@@ -1,58 +1,164 @@
-# Salesforce DX Project
+# 📮 API de Preenchimento de CEP — Salesforce + ViaCEP
 
-Salesforce DX is a development approach that brings source-driven development, team collaboration, and continuous integration to the Salesforce Platform. Instead of working directly in an org through a web browser, you work with metadata as source files in a local DX project, track changes in version control, and deploy through automated processes.
+Integração automática com a API pública [ViaCEP](https://viacep.com.br/) para preenchimento dos campos de endereço do objeto **Lead** no Salesforce, acionada no momento da criação do registro.
 
-This project template gets you started with the tools and structure you need to build Salesforce applications using source control, scratch orgs, and the Salesforce CLI.
+---
 
-## Prerequisites
+## 📋 Funcionalidade
 
-Before you start, make sure you have:
+Quando um novo **Lead** é criado com o campo `CEP__c` preenchido, o sistema realiza automaticamente uma chamada à API do ViaCEP e preenche os campos de endereço do Lead com os dados retornados:
 
-- **Salesforce CLI** - Download from [developer.salesforce.com/tools/salesforcecli](https://developer.salesforce.com/tools/salesforcecli). See [Install Salesforce CLI](https://developer.salesforce.com/docs/atlas.en-us.sfdx_setup.meta/sfdx_setup/sfdx_setup_install_cli.htm) for details.
-- **VS Code with Salesforce Extension Pack** - See [Installation Instructions](https://developer.salesforce.com/docs/platform/sfvscode-extensions/guide/install.html) for details. Includes the Agentforce Vibes extension.
-- **A development org** - Sign up for a free Developer Edition org [here](https://developer.salesforce.com/signup).
-- **Dev Hub enabled** (optional, required to create scratch orgs) - You can enable Dev Hub in your development org under Setup > Dev Hub.  See [Provide Developers Access to Salesforce DX Tools](https://developer.salesforce.com/docs/atlas.en-us.sfdx_dev.meta/sfdx_dev/sfdx_setup_dx_tools.htm).
+| Campo ViaCEP | Campo Salesforce |
+|---|---|
+| `logradouro` | `Street` |
+| `bairro` | `City` (bairro) |
+| `localidade` | `City` |
+| `uf` | `State` |
+| `cep` | `PostalCode` |
+| `pais` | `Country` |
 
-## Project Structure
+---
 
-Your DX project follows this structure:
+## 🏗️ Estrutura do Projeto
 
-- **`force-app/main/default/`** - Your metadata source files live in this default package directory. You can configure additional package directories in the `sfdx-project.json` file.
-- **`config/`** - Scratch org definitions and project settings
-- **`scripts/`** - Automation scripts for common tasks
-- **`sfdx-project.json`** - Project manifest that defines package directories, namespace, API version, and other project-level settings
+```
+force-app/
+└── main/
+    └── default/
+        ├── triggers/
+        │   └── LeadTrigger.trigger
+        └── classes/
+            ├── ViaCepQueueable.cls
+            ├── ViaCepQueueable.cls-meta.xml
+            ├── ViaCepService.cls
+            ├── ViaCepService.cls-meta.xml
+            ├── LeadTriggerTest.cls
+            └── LeadTriggerTest.cls-meta.xml
+```
 
-See [Salesforce DX Project Configuration](https://developer.salesforce.com/docs/atlas.en-us.sfdx_dev.meta/sfdx_dev/sfdx_dev_ws_config.htm).
+### Fluxo de Execução
 
-## Get Started
+```
+LeadTrigger.trigger
+        │
+        ▼ (after insert)
+ViaCepQueueable.cls
+        │
+        ▼ (chamada HTTP assíncrona)
+ViaCepService.cls
+        │
+        ▼ (atualiza o Lead)
+     Lead (Address fields)
+```
 
-Ready to start developing? The [Get Started with Salesforce DX](https://developer.salesforce.com/docs/atlas.en-us.sfdx_dev.meta/sfdx_dev/sfdx_dev_get_started_dx.htm) guide walks you through your first project, from creating a scratch org to creating a simple Apex class or LWC to deploying your code to a sandbox.
+### Descrição das Classes
 
-## Common Salesforce CLI Commands
+**`LeadTrigger.trigger`**
+Acionado após a inserção (`after insert`) de um novo Lead. Filtra registros com `CEP__c` preenchido e enfileira o job assíncrono.
 
-Here are common CLI commands that you'll use the most:
+**`ViaCepQueueable.cls`**
+Implementa `Queueable` para processar os leads de forma assíncrona, respeitando os limites de chamadas HTTP do Salesforce.
 
-- `sf org login web`: Authorize an org
-- `sf org open`: Open your org in a browser
-- `sf org create scratch`: Create a scratch org
-- `sf project deploy start`: Deploy metadata to your org
-- `sf project retrieve start`: Retrieve metadata from your org
-- `sf template generate <artifact>`: Scaffold new components, such as Apex classes and triggers, LWC components, Lightning apps, and more
-- `sf apex <command>`: Run Apex tests, run anonymous Apex blocks, and view logs
-- `sf data <command>`: Work with test data
-- `sf alias <command>`: Manage org aliases
-- `sf config <command>`: Configure CLI settings
+**`ViaCepService.cls`**
+Responsável pela chamada HTTP à API do ViaCEP, mapeamento dos campos retornados e atualização dos registros de Lead.
 
-## Use Agentforce Vibes to Build Lightning Apps
+---
 
-Transform your ideas into custom Lightning apps that extend CRM workflows directly in Lightning Experience. Through natural conversations with Agentforce Vibes, implement custom objects and fields, complex business logic, and dynamic UI components. See [Build a Lightning App Using Agentforce Vibes](https://developer.salesforce.com/docs/platform/einstein-for-devs/guide/lexapp-overview.html).
+## ⚙️ Pré-requisitos e Configuração
 
-## Additional Resources
+### 1. Remote Site Settings
 
-- [Agentforce Vibes Developer Guide](https://developer.salesforce.com/docs/platform/einstein-for-devs/guide/einstein-overview.html)
-- [Salesforce CLI Installation Guide](https://developer.salesforce.com/docs/atlas.en-us.sfdx_setup.meta/sfdx_setup/sfdx_setup_intro.htm)
-- [Salesforce DX Developer Guide](https://developer.salesforce.com/docs/atlas.en-us.sfdx_dev.meta/sfdx_dev/)
-- [Salesforce CLI Command Reference](https://developer.salesforce.com/docs/atlas.en-us.sfdx_cli_reference.meta/sfdx_cli_reference/)
-- [Salesforce CLI Plugin Development Guide](https://developer.salesforce.com/docs/platform/salesforce-cli-plugin/guide/conceptual-overview.html)
-- [Salesforce VS Code Extensions Documentation](https://developer.salesforce.com/tools/vscode/)
+Para permitir chamadas à API externa, adicione a URL do ViaCEP como site remoto autorizado:
 
+1. Acesse **Setup → Security → Remote Site Settings**
+2. Clique em **New Remote Site**
+3. Preencha:
+   - **Remote Site Name:** `ViaCEP`
+   - **Remote Site URL:** `https://viacep.com.br`
+4. Salve.
+
+### 2. Campo Customizado no Lead
+
+Certifique-se de que o campo `CEP__c` existe no objeto Lead:
+
+- **Object:** Lead
+- **Field Label:** CEP
+- **API Name:** `CEP__c`
+- **Data Type:** Text (8)
+
+---
+
+## 🧪 Testes
+
+Os testes estão implementados na classe `LeadTriggerTest.cls` e cobrem os cenários principais:
+
+| Cenário | Método |
+|---|---|
+| CEP válido retorna endereço preenchido | `testLeadWithValidCep()` |
+| CEP inválido não quebra o fluxo | `testLeadWithInvalidCep()` |
+| Lead sem CEP não aciona a integração | `testLeadWithoutCep()` |
+| Timeout/erro de rede é tratado | `testApiTimeout()` |
+
+### Executar os Testes
+
+Via Salesforce CLI:
+```bash
+sf apex run test --class-names LeadTriggerTest --result-format human
+```
+
+Via Developer Console:
+1. Acesse **Developer Console → Test → New Run**
+2. Selecione `LeadTriggerTest`
+3. Clique em **Run**
+
+> **Cobertura mínima exigida para deploy:** 75%
+
+---
+
+## ⚠️ Tratamento de Erros
+
+| Situação | Comportamento |
+|---|---|
+| CEP não encontrado (404) | Lead é salvo sem atualizar o endereço |
+| API fora do ar / timeout | Exceção é capturada e logada; Lead não é bloqueado |
+| CEP com formato inválido | Integração não é acionada |
+| Erro de HTTP (5xx) | Log de erro gerado; nenhuma atualização realizada |
+
+Erros são registrados via `System.debug` e podem ser monitorados em **Setup → Apex Jobs** ou via ferramentas de monitoramento como **Datadog** ou **Splunk**.
+
+---
+
+## 🚀 Deploy
+
+### Via Salesforce CLI (SFDX)
+
+```bash
+# Autenticar na org
+sf org login web --alias minha-org
+
+# Validar sem fazer deploy
+sf project deploy validate --source-dir force-app --test-level RunSpecifiedTests --tests LeadTriggerTest
+
+# Deploy completo
+sf project deploy start --source-dir force-app --test-level RunSpecifiedTests --tests LeadTriggerTest
+```
+
+### Via Change Set
+
+1. Adicione ao change set os seguintes componentes:
+   - Apex Class: `ViaCepQueueable`
+   - Apex Class: `ViaCepService`
+   - Apex Class: `LeadTriggerTest`
+   - Apex Trigger: `LeadTrigger`
+   - Custom Field: `Lead.CEP__c`
+2. Envie o change set para a org de destino
+3. Execute o deploy incluindo os testes
+
+---
+
+## 🔗 Referências
+
+- [Documentação ViaCEP](https://viacep.com.br/)
+- [Salesforce — Queueable Apex](https://developer.salesforce.com/docs/atlas.en-us.apexcode.meta/apexcode/apex_queueing_jobs.htm)
+- [Salesforce — Callouts from Apex](https://developer.salesforce.com/docs/atlas.en-us.apexcode.meta/apexcode/apex_callouts.htm)
+- [Salesforce — Remote Site Settings](https://help.salesforce.com/s/articleView?id=sf.configuring_remoteproxy.htm)
