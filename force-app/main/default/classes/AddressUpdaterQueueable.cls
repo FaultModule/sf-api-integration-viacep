@@ -10,10 +10,13 @@ public class AddressUpdaterQueueable implements Queueable, Database.AllowsCallou
     }
 
     private List<SObject> takeIds(List<SObject> updateRecords){
+        if (updateRecords == null || updateRecords.isEmpty()) return new List<SObject>();
         List<Id> ids = new List<Id>();
-        for(Sobject record : updateRecords){
+        String sObjectType = String.valueOf(updateRecords[0].getSObjectType());
+        for(SObject record : updateRecords){
             ids.add(record.Id);
         }
-        return [SELECT Id, CEP__c FROM Lead WHERE Id IN: ids];
+        String query = 'SELECT Id, CEP__c FROM ' + sObjectType + ' WHERE Id IN :ids';
+        return Database.query(query);
     }
 }
