@@ -32,59 +32,45 @@ private class AddressUpdaterIntegrationTest {
             return res;
         }
     }
-
     @isTest
     static void integration_blankCep_returnsNull() {
         AddressUpdaterIntegration.ViaCepWrapper result = AddressUpdaterIntegration.integration('');
-
         System.assertEquals(null, result);
     }
-
     @isTest
     static void integration_200Response_returnsPopulatedWrapper() {
         Test.setMock(HttpCalloutMock.class, new Mock200());
-
         Test.startTest();
         AddressUpdaterIntegration.ViaCepWrapper result = AddressUpdaterIntegration.integration('25250536');
         Test.stopTest();
-
         System.assertNotEquals(null, result);
         System.assertEquals('25250536', result.cep);
         System.assertEquals('Rua Teste', result.street);
         System.assertEquals('Petropolis', result.city);
         System.assertEquals('RJ', result.state);
     }
-
     @isTest
     static void integration_404Response_returnsNull() {
         Test.setMock(HttpCalloutMock.class, new Mock404());
-
         Test.startTest();
         AddressUpdaterIntegration.ViaCepWrapper result = AddressUpdaterIntegration.integration('25250536');
         Test.stopTest();
-
         System.assertEquals(null, result);
     }
-
     @isTest
     static void integration_calloutException_returnsNull() {
         Test.setMock(HttpCalloutMock.class, new MockCalloutError());
-
         Test.startTest();
         AddressUpdaterIntegration.ViaCepWrapper result = AddressUpdaterIntegration.integration('25250536');
         Test.stopTest();
-
         System.assertEquals(null, result);
     }
-
     @isTest
     static void integration_invalidJson_returnsNull() {
         Test.setMock(HttpCalloutMock.class, new MockInvalidJson());
-
         Test.startTest();
         AddressUpdaterIntegration.ViaCepWrapper result = AddressUpdaterIntegration.integration('25250536');
         Test.stopTest();
-
         System.assertEquals(null, result);
     }
 }
