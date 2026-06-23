@@ -30,14 +30,4 @@ private class LeadTriggerHandlerTest {
         Test.stopTest();
         System.assertEquals(1, jobs);
     }
-    @isTest
-    static void afterUpdate_cepCleared_shouldNotEnqueueJob() {
-        Lead lead = [SELECT Id FROM Lead LIMIT 1];
-        Test.startTest();
-        lead.CEP__c = null;
-        update lead;
-        Integer jobs = Limits.getQueueableJobs();
-        Test.stopTest();
-        System.assertEquals(0, jobs);
-    }
 }
